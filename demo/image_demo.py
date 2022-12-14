@@ -8,9 +8,9 @@ from mmdet.apis import (async_inference_detector, inference_detector,
 
 def parse_args():
     parser = ArgumentParser()
-    parser.add_argument('img', help='Image file')
-    parser.add_argument('config', help='Config file')
-    parser.add_argument('checkpoint', help='Checkpoint file')
+    parser.add_argument('--img', default="demo/demo.jpg", help='Image file')
+    parser.add_argument('--config', default="configs/yolox/yolox_l_8x8_300e_coco.py", help='Config file')
+    parser.add_argument('--checkpoint', default="weights/yolox_l_8x8_300e_coco_20211126_140236-d3bd2b23.pth",help='Checkpoint file')
     parser.add_argument('--out-file', default=None, help='Path to output file')
     parser.add_argument(
         '--device', default='cuda:0', help='Device used for inference')
@@ -34,6 +34,8 @@ def main(args):
     model = init_detector(args.config, args.checkpoint, device=args.device)
     # test a single image
     result = inference_detector(model, args.img)
+    print(len(result))
+    print(result)
     # show the results
     show_result_pyplot(
         model,
