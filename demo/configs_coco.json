@@ -1,0 +1,21 @@
+{
+    "image_dir": "/home/kelaboss/eval_data/xcyuan/person_data_clean/172.25.188.30/2022_11_22_10_11_17",
+    "out_dir": "/home/kelaboss/eval_data/xcyuan/person_data_clean/172.25.188.30/multi_yolox_8x8_300e_coco",
+    "pre_result_file": "multi_results-yolox_x_l_yolov3.pth",
+    "config_infos": {
+        "configs": ["configs/yolox/yolox_l_8x8_300e_coco.py",
+                    "configs/yolox/yolox_x_8x8_300e_coco.py",
+                    "configs/yolo/yolov3_mobilenetv2_320_300e_coco.py"
+                ],
+        "checkpoints": ["weights/yolox_l_8x8_300e_coco_20211126_140236-d3bd2b23.pth",
+                        "weights/yolox_x_8x8_300e_coco_20211126_140254-1ef88d67.pth",
+                        "weights/yolov3_mobilenetv2_320_300e_coco_20210719_215349-d18dff72.pth"
+                    ]
+    },
+    "device": "cuda:0",
+    "score_thr": [0.2, 0.2, 0.2],
+    "vote_score": [0.3, 0.4, 0.3],
+    "classes": {
+        "person": 1
+    }
+}

@@ -74,11 +74,12 @@ def make_shapes(all_cotegory_bboxes):
         labels = all_cotegory_bboxes[cotegory_id]
         for label in labels:
             for cotegory_name, bbox in label.items():
-                bbox = [float(i) for i in bbox]
+                bbox = [float(i) for i in bbox[0]]
                 shape = {
                     "label": cotegory_name,
                     "is_verify": None,
                     "points": [[bbox[0], bbox[1]], [bbox[2], bbox[3]]],
+                    "score": bbox[4],
                     "group_id": None,
                     "shape_type": "rectangle",
                     "flags": {}
@@ -89,12 +90,20 @@ def make_shapes(all_cotegory_bboxes):
     return shapes
 
 
+def cocomaplist(classes, cat_id):
+    mapclasses = {}
+    for index, cats_name in enumerate(classes):
+        mapclasses[classes[cats_name]] = index
+
+    return mapclasses[cat_id]
+
+
 def nms_bboxes(results, classes, score_thr):
     all_cotegory_bboxes = []
     for cotegory_name, cotegory_id in classes.items():
         for ids, bbox in enumerate(results):
             bboxes = []
-            if ids == int(cotegory_id):
+            if ids == int(cocomaplist(classes, cotegory_id)):
                 for point in bbox:
                     if point[-1] > score_thr:
                         bboxes.append({cotegory_name: point})
@@ -104,13 +113,16 @@ def nms_bboxes(results, classes, score_thr):
     return all_cotegory_bboxes
 
 
-def areaIoU(fpoint, spoint, vote_score):
+def areaIoU(fpoint, spoint, vote_score, cmpmin = False):
     score_1 = fpoint[-1]*vote_score[0]
     score_2 = spoint[-1]*vote_score[1]
+    # print(f"score_1: {score_1}; score_2: {score_2}")
     if score_1 > score_2:
         bbox = fpoint
+        score = score_1
     else:
         bbox = spoint
+        score = score_2
 
     x11, y11, x12, y12 = fpoint[0:4]
     x21, y21, x22, y22 = spoint[0:4]
@@ -128,9 +140,22 @@ def areaIoU(fpoint, spoint, vote_score):
     box2_area = (x22-x21)*(y22-y21)
 
     union_area = box1_area + box2_area - inter_area
+    if cmpmin == True:
+        union_area = min([box1_area, box2_area])
+    
     area_IoU = inter_area / union_area
 
-    return bbox, area_IoU
+    # print(f"bbox: {bbox}")
+    return score, bbox, area_IoU
+
+
+def make_arrange(nums):
+    order_list = []
+    for i in range(nums-1):
+        for j in range(i+1, nums):
+            order_list.append([i, j])
+    
+    return order_list
 
 
 def weight_vote(multi_results, vote_scores, th=0.8):
@@ -140,17 +165,31 @@ def weight_vote(multi_results, vote_scores, th=0.8):
         cotegorys_list = []
         # print(f"one_results: {len(one_results)}")
         results_nums = len(one_results)
+        order_list = make_arrange(results_nums)
 
-        for i in range(results_nums-1):
+        for i, j in order_list:
             for flabels in one_results[i]:
-                for slabels in one_results[i+1]:
+                for slabels in one_results[j]:
                     for cotegory_name, fbbox in flabels.items():
                         for cotegory_name, sbbox in slabels.items():
-                            bbox, comIoU = areaIoU(fbbox, sbbox, vote_scores[i:i+2])
-                            # print(f"comIoU: {comIoU}")
+                            score, bbox, comIoU = areaIoU(fbbox, sbbox, vote_scores[i:j+1])
+                            # print(f"comIoU:{comIoU}")
                             if comIoU > th:
-                                cotegorys_list.append({cotegory_name: bbox})
-
+                                if len(cotegorys_list) > 0:
+                                    IoU_list = []
+                                    for s in range(len(cotegorys_list)):
+                                        score_o, _, comIoU_o = areaIoU(cotegorys_list[s][cotegory_name][0], bbox, vote_scores[i:j+1], cmpmin=True)
+                                        IoU_list.append(comIoU_o)
+                                    IoU_array = np.array(IoU_list)
+                                    max_args = np.argmax(IoU_array)
+                                    if np.max(IoU_array) > th:
+                                        if score_o > cotegorys_list[max_args][cotegory_name][1]:
+                                            cotegorys_list.pop(max_args)
+                                            cotegorys_list.append({cotegory_name:[bbox, score]})
+                                    else:
+                                        cotegorys_list.append({cotegory_name:[bbox, score]})
+                                else:
+                                    cotegorys_list.append({cotegory_name:[bbox, score]})
 
         new_result.append(cotegorys_list)
         # print(f"new_result: {new_result}")
@@ -236,7 +275,7 @@ def get_args(args):
 
 def parse_args():
     parser = ArgumentParser()
-    parser.add_argument('--configs_path', default="./demo/configs.json", help='')
+    parser.add_argument('--configs_path', default="./demo/configs_coco.json", help='')
     args = parser.parse_args()
     
     return args
@@ -247,3 +286,6 @@ if __name__ == "__main__":
     configs = get_args(args)
     
     multi_infer(configs)
+
+    # order_list = make_arrange(4)
+    # print(order_list)
